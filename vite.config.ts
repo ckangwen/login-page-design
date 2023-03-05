@@ -35,7 +35,7 @@ export default defineConfig({
         presetAttributify(),
         presetTypography(),
         presetIcons({
-          scale: 1.5,
+          scale: 1.3,
         }),
       ],
       transformers: [transformerDirectives(), transformerVariantGroup()],

@@ -1,123 +1,206 @@
 <script lang="ts" setup>
-import FormWrapper from "../components/FormWrapper.vue";
+import { CharrueSchemaForm } from "@charrue/schema-form-next";
 import InnerForm from "../components/InnerForm.vue";
-import Setting from "../components/Setting.vue";
-import { usePrevious } from "../composables/usePrevious";
-// 表单左侧图片URL
-const formData = ref({
-  icon: "https://preview.pro.ant.design/logo.svg",
-  title: "Ant Design",
-  description: "Ant Design is the most influential web design specification in Xihu district",
-  type: "one",
-  pageJustifyCenter: "center",
-  pageBgImage: "none",
-  pageBgColor: "#fff",
-  formWidth: 360,
-  formMinWidth: 320,
-  formMaxWidth: 400,
-  formBgColor: "#fff",
-  formBgImage: "none",
-  formBoxShadow: "none",
-  pagePaddingX: 0,
-  pagePaddingY: 0,
+import { useDesignConfig } from "../composables/useDesignConfig";
+import { useSetting } from "../composables/useSetting";
 
-  formLeftBgImage: "none",
-  formLeftBgColor: "inherit",
-  formRightBgImage: "none",
-  formRightBgColor: "inherit",
-  formHeight: "auto",
-});
+const formData = useDesignConfig();
 
-const prevJustifyCenter = usePrevious(formData.value.pageJustifyCenter);
+const {
+  collapsed,
+  codePreviewVisible,
+  schema,
+  visibleState,
+
+  onCollapse,
+  onOpenCodePreview,
+} = useSetting(formData);
+
 const varCssStyle = computed(() => {
-  let padding = [0, 0, 0, 0];
-  if (formData.value.pagePaddingX > 0) {
+  const padding: string[] = ["0px", "0px", "0px", "0px"];
+  if (parseFloat(formData.value.pagePaddingX) > 0) {
     padding[1] = formData.value.pagePaddingX;
   } else {
     padding[3] = formData.value.pagePaddingX;
   }
 
-  if (formData.value.pagePaddingY > 0) {
+  if (parseFloat(formData.value.pagePaddingY) > 0) {
     padding[0] = formData.value.pagePaddingY;
   } else {
     padding[2] = formData.value.pagePaddingY;
   }
 
-  console.log("prevJustifyCenter", prevJustifyCenter.value, padding, formData.value);
-  if (prevJustifyCenter.value && prevJustifyCenter.value !== formData.value.pageJustifyCenter) {
-    padding = [0, 0, 0, 0];
-  }
-
   const paddingValue = `${padding.join("px ")}px`;
-  return {
+  const style = {
     "--pageBgColor": formData.value.pageBgColor,
     "--pageBgImage": formData.value.pageBgImage,
     "--pageJustifyCenter": formData.value.pageJustifyCenter,
-    "--formWidth": `${formData.value.formWidth}px`,
+    "--formRootWidth": formData.value.formRootWidth,
+    "--formContainerWidth":
+      formData.value.type === "one" ? "100%" : `calc(100% - ${formData.value.formLeftColumnWidth})`,
+    "--formBorderRadius": "8px",
+    // "--formBorderRadius": formData.value.type === "one" ? "8px" : "0 8px 8px 0",
+    "--formLeftBasis": formData.value.type === "one" ? "0" : "50%",
+    "--formRightBasis": formData.value.type === "one" ? "0" : "50%",
     "--formMinWidth": `${formData.value.formMinWidth}px`,
     "--formMaxWidth": `${formData.value.formMaxWidth}px`,
     "--formBgColor": formData.value.formBgColor,
+    "--formBgImage": formData.value.formBgImage,
     "--formBoxShadow": formData.value.formBoxShadow,
+    "--formLeftColumnWidth": formData.value.formLeftColumnWidth,
     "--pagePadding": paddingValue,
   };
+  return Object.entries(style).reduce((acc, [key, value]) => {
+    if (value !== "") {
+      acc[key] = value;
+    }
+    return acc;
+  }, {} as unknown as Record<string, string>);
 });
 </script>
 
 <template>
-  <div class="login-page--normal flex items-center w-screen h-screen" :style="varCssStyle">
-    <FormWrapper :type="formData.type">
-      <div class="flex flex-col items-center justify-center h-auto box-border login-container">
-        <div class="flex h-44px login-wrapper">
-          <span class="w-44px h-44px mr-4">
-            <img class="w-full h-full" alt="logo" :src="formData.icon" />
-          </span>
-          <span class="text-[30px] font-bold">{{ formData.title }}</span>
+  <div
+    bg="cover no-repeat"
+    flex
+    items-center
+    w-screen
+    h-screen
+    class="login-page-container"
+    :style="varCssStyle"
+  >
+    <div flex class="login-form-root">
+      <div flex="grow-0 shrink-0" h-auto class="login-form__left"></div>
+      <div
+        flex="~ col grow-0 shrink-0"
+        items-center
+        justify-center
+        h-auto
+        box-border
+        class="login-form-container"
+      >
+        <div flex="~ col" class="login-form__header">
+          <div flex items-center>
+            <span class="w-44px h-44px mr-4">
+              <img class="w-full h-full" alt="logo" :src="formData.icon" />
+            </span>
+            <span class="text-[30px] font-bold">{{ formData.title }}</span>
+          </div>
+          <div w-full text="center sm" m="t-4 b-10" class="text-[#848587]">
+            {{ formData.description }}
+          </div>
         </div>
-        <div class="text-center mt-4 mb-10 text-sm text-[#848587]">
-          {{ formData.description }}
-        </div>
-        <div class="w-full">
+        <div w-full>
           <InnerForm></InnerForm>
         </div>
       </div>
-    </FormWrapper>
+    </div>
   </div>
 
-  <div class="setting">
-    <Setting v-model="formData"></Setting>
+  <el-button
+    :class="[collapsed ? 'setting-icon--opened' : 'setting-icon--collapsed']"
+    class="w-32px h-32px"
+    circle
+    @click="onCollapse"
+  >
+    <span class="i-mdi-unfold-less-vertical cursor-pointer" />
+  </el-button>
+  <div
+    class="setting"
+    :class="{
+      'setting--collapsed': collapsed,
+    }"
+  >
+    <div class="flex justify-end sticky top-0 pt-4 pb-2 bg-white z-3">
+      <el-button class="w-32px h-32px" circle @click="onOpenCodePreview">
+        <span class="i-mdi-code-braces cursor-pointer" />
+      </el-button>
+      <el-button class="w-32px h-32px" circle @click="onCollapse">
+        <span class="i-mdi-unfold-less-vertical cursor-pointer" />
+      </el-button>
+    </div>
+
+    <CharrueSchemaForm
+      v-model="formData"
+      :schema="schema"
+      :visible-state="visibleState"
+      label-position="left"
+    ></CharrueSchemaForm>
   </div>
+
+  <CodePreview v-model="codePreviewVisible"></CodePreview>
 </template>
 
 <style lang="scss">
-.login-page--center {
-  .login-wrapper {
-    @apply: items-center justify-center;
-  }
-}
-.login-page--bg {
-  --bg-color: #f0f2f5;
-  --bg-image: url("https://gw.alipayobjects.com/zos/rmsportal/TVYTbAXWheQpRcWDaDMu.svg");
-}
-
-.login-page--normal {
+.login-page-container {
   background-color: var(--pageBgColor);
   background-image: var(--pageBgImage);
   justify-content: var(--pageJustifyCenter);
   padding: var(--pagePadding);
-  background-size: cover;
-  background-repeat: no-repeat;
+}
+.login-form-root {
+  transition: all 0.3s;
+  width: var(--formRootWidth);
+  border-radius: var(--formBorderRadius);
+  background-image: var(--formBgImage);
+  box-shadow: var(--formBoxShadow);
 }
 
-.login-container {
+.login-form-container {
   background-color: var(--formBgColor);
-  width: var(--formWidth);
-  min-width: var(--formMinWidth);
-  max-width: var(--formMaxWidth);
-  box-shadow: var(--formBoxShadow);
-
-  border-radius: 8px;
+  width: var(--formContainerWidth);
   padding: 20px 30px;
   // background: rgba(255, 255, 255, 0.8);
   // backdrop-filter: saturate(50%) blur(3px);
+}
+.login-form__left {
+  flex-basis: var(--formLeftColumnWidth);
+}
+
+.setting-icon--opened.el-button.is-circle {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  box-shadow: 0 10px 40px #1d161733;
+  background-color: #fff;
+  z-index: 3;
+  transition: all 0.3s;
+  border-radius: 50%;
+}
+.setting-icon--collapsed.el-button.is-circle {
+  display: none;
+  width: 0;
+  transition: all 0.3s;
+}
+
+.setting {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  box-shadow: 0 10px 40px #1d161733;
+  background-color: #fff;
+  padding: 0 20px;
+  z-index: 3;
+  border-radius: 8px;
+  overflow: auto;
+  height: calc(100vh - 40px);
+  transition: all 0.3s;
+
+  &--collapsed {
+    width: 0;
+    display: none;
+  }
+
+  .charrue-schema-field-item {
+    // border: 1px solid var(--el-border-color);
+    --el-select-border-color-hover: none;
+    --el-select-input-focus-border-color: none;
+    .el-input__wrapper,
+    .el-input__wrapper.is-focus,
+    .el-textarea__inner,
+    .el-input__inner {
+      box-shadow: none;
+    }
+  }
 }
 </style>
